@@ -27,22 +27,26 @@ In the rest of his talk, Kunal tries to answer the question **Why and How did th
 
 He starts by explaining about a hardware component called [Servo](http://en.wikipedia.org/wiki/Servomotor) as something similar to a motor but with restricted motion. Servos are used to provide steering action in most robotic cars. He also explains about [PWM](http://en.wikipedia.org/wiki/Pulse-width_modulation) which is a square wave whose pulse width can be changed. A Servo takes PWM as input to rotate its shaft to a specific angle. Now he shows how they modeled a servo in EMBD
 
-PWM interface
+PWM interface  
+(https://github.com/kidoman/embd/blob/master/motion/servo/servo.go - line 20:22)
 <script type="text/javascript" src="https://sourcegraph.com/github.com/kidoman/embd/.GoPackage/github.com/kidoman/embd/motion/servo/.def/PWM/.sourcebox.js"></script>
 
-Servo Struct
+Servo Struct  
+(https://github.com/kidoman/embd/blob/master/motion/servo/servo.go - line 24:28)
 <script type="text/javascript" src="https://sourcegraph.com/github.com/kidoman/embd/.GoPackage/github.com/kidoman/embd/motion/servo/.def/Servo/.sourcebox.js"></script>
 
-Servo method to set angle
+Servo method to set angle  
+(https://github.com/kidoman/embd/blob/master/motion/servo/servo.go - line 40:46)
 <script type="text/javascript" src="https://sourcegraph.com/github.com/kidoman/embd/.GoPackage/github.com/kidoman/embd/motion/servo/.def/Servo/SetAngle/.sourcebox.js"></script>
 
 To explain why PWM is a interface, He talks about how PWM is a signal which can be generated using different methods. He uses snippets from EMBD to show two such methods used.
 
-Using [PCA9685](https://www.adafruit.com/datasheets/PCA9685.pdf)(12 channel PWM generator)
+Using [PCA9685](https://www.adafruit.com/datasheets/PCA9685.pdf)(12 channel PWM generator)  
+(https://github.com/kidoman/embd/blob/master/samples/servo.go - line 21:32)
 <script type="text/javascript" src="https://sourcegraph.com/github.com/kidoman/embd/.GoPackage/github.com/kidoman/embd/controller/pca9685/.def/PCA9685/.sourcebox.js"></script>
-<script type="text/javascript" src="https://sourcegraph.com/github.com/kidoman/embd/.GoPackage/github.com/kidoman/embd/controller/pca9685/.def/PCA9685/ServoChannel/.sourcebox.js"></script>
 
-Using GPIO
+Using GPIO  
+(https://github.com/kidoman/embd/blob/master/samples/pwm.go - line 20:28)
 <script type="text/javascript" src="https://sourcegraph.com/github.com/kidoman/embd/.GoPackage/github.com/kidoman/embd/.def/NewPWMPin/.sourcebox.js"></script>
 
 With this in context, he explains how a servo in real world does not really care about how the input PWM is generated. All it needs is a handle on its pulse width. So to enable the two PWM signals to be used as Servo's input, all they have to do is, implement the function **SetMicroseconds**. By doing this, those PWM signals or any other PWM is automatically a PWM interface type by Duck Typing. Kunal shares that this was the most elegant approach for implementing a Servo using interfaces.
@@ -53,49 +57,23 @@ Kunal talks about how sensors work before explaining the usage of Channels and G
 
 He shows a snippet from [L3GD20](http://www.adafruit.com/product/1714) package which is a gyro sensor. It gives orientation of the sensor with respect to 3 axes from its initial position. Its the same sensor he used in his demo.
 
-L3GD20 Struct
+L3GD20 Struct  
+(https://github.com/kidoman/embd/blob/master/sensor/l3gd20/l3gd20.go line 114:125)
 <script type="text/javascript" src="https://sourcegraph.com/github.com/kidoman/embd/.GoPackage/github.com/kidoman/embd/sensor/l3gd20/.def/L3GD20/.sourcebox.js"></script>
 
-Start method
+Start method  
+(https://github.com/kidoman/embd/blob/master/sensor/l3gd20/l3gd20.go line 328:365)
 <script type="text/javascript" src="https://sourcegraph.com/github.com/kidoman/embd/.GoPackage/github.com/kidoman/embd/sensor/l3gd20/.def/L3GD20/Start/.sourcebox.js"></script>
 
-Orientations
+Orientations  
+(https://github.com/kidoman/embd/blob/master/sensor/l3gd20/l3gd20.go line 319:325)
 <script type="text/javascript" src="https://sourcegraph.com/github.com/kidoman/embd/.GoPackage/github.com/kidoman/embd/sensor/l3gd20/.def/L3GD20/Orientations/.sourcebox.js"></script>
 
 In EMBD every sensor package follows the same pattern. It exposes a Run or Start method which does initial setup and calibration if required, and then starts a go routine where the sensor is set on a data acquisition loop. It keeps sending the data over a channel whenever its available. Now to use this data, the sensor package exposes a Method which gives a receive-only channel. (in this case its **_Orientations_** )
 
 With this pattern, the usage becomes fairly simple as shown.
 
-```
-    if err := embd.InitI2C(); err != nil {
-        panic(err)
-    }
-    defer embd.CloseI2C()
-
-    bus := embd.NewI2CBus(1)
-
-    gyro := l3gd20.New(bus, l3gd20.R250DPS)
-    defer gyro.Close()
-
-    gyro.Start()
-
-    quit := make(chan os.Signal, 1)
-    signal.Notify(quit, os.Interrupt, os.Kill)
-
-    orientations, err := gyro.Orientations()
-    if err != nil {
-        panic(err)
-    }
-
-    for {
-        select {
-        case orientation := <-orientations:
-            fmt.Printf("x: %v, y: %v, z: %v\n", orientation.X, orientation.Y, orientation.Z)
-        case <-quit:
-            return
-        }
-    }
-```
+(https://github.com/kidoman/embd/blob/master/samples/l3gd20.go line 21:51)
 
 Kunal then talks briefly about the journey ahead for EMBD. He covers three main points.
 * Support for more platforms 
